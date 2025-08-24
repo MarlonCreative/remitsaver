@@ -73,6 +73,25 @@
 
       <footer><p><b>Disclaimer:</b> Demo only. Rates/fees change; verify with the provider.</p></footer>
     </div>
+    <!-- ===== USDC POS ===== -->
+<div class="card" style="margin-top:16px">
+  <h3>Accept USDC (Polygon)</h3>
+  <div class="grid">
+    <div>
+      <label>Amount (USD)</label>
+      <input id="posAmount" type="number" value="5" step="0.01" />
+      <label style="margin-top:8px;display:block">Merchant wallet (0x...)</label>
+      <input id="posAddress" placeholder="0xYourPolygonAddress" />
+      <button class="btn" style="margin-top:12px" onclick="makePOS()">Generate Payment QR</button>
+      <button class="btn" style="background:#374151;margin-top:12px" onclick="window.open(polygonscanLink,'_blank')">Check on PolygonScan</button>
+      <div class="muted" style="margin-top:8px">Demo tip: use a small amount and a Polygon wallet.</div>
+    </div>
+    <div>
+      <div id="qrcode" style="width:256px;height:256px;background:#0f141c;border:1px solid #22304a;border-radius:10px"></div>
+      <div class="muted" id="posLink" style="margin-top:8px;word-break:break-all"></div>
+    </div>
+  </div>
+</div>
   </div>
 
   <script>
@@ -127,5 +146,32 @@
       `;
     }
   </script>
+<script>
+  // Polygon PoS chainId = 137; USDC has 6 decimals
+  let polygonscanLink = "https://polygonscan.com/";
+
+  function toUSDCUnits(amountUsd){ return Math.round(Number(amountUsd) * 1e6); }
+
+  function makePOS(){
+    const addr = document.getElementById('posAddress').value.trim();
+    const amt  = document.getElementById('posAmount').value;
+    if(!/^0x[a-fA-F0-9]{40}$/.test(addr)){ alert('Enter a valid Polygon address (0x...)'); return; }
+
+    const units = toUSDCUnits(amt);
+    // Native USDC on Polygon PoS:
+    const USDC_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+
+    // EIP-681 ERC-20 transfer: ethereum:<token>@<chain>/transfer?address=<to>&uint256=<amount_units>
+    const uri = `ethereum:${USDC_POLYGON}@137/transfer?address=${addr}&uint256=${units}`;
+
+    // Render QR + show link
+    document.getElementById('qrcode').innerHTML = "";
+    new QRCode(document.getElementById("qrcode"), { text: uri, width: 256, height: 256 });
+    document.getElementById('posLink').innerHTML = `<b>Payment link:</b> ${uri}`;
+
+    // convenience: open address page on polygonscan
+    polygonscanLink = `https://polygonscan.com/address/${addr}`;
+  }
+</script>
 </body>
 </html>
