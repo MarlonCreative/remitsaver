@@ -1,8 +1,131 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>RemitSaver</title></head>
-  <body>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RemitSaver – Fee & FX Comparator</title><script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; }
+    body { margin: 0; background:#0c0f14; color:#e8eef7; }
+    .wrap { max-width: 880px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    p.sub { color:#a9b5c7; margin: 0 0 24px; }
+    .card { background:#151a23; border:1px solid #212938; border-radius:16px; padding:20px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    label { font-size:14px; color:#b9c4d8; display:block; margin-bottom:6px; }
+    input { width:100%; padding:12px; border-radius:10px; border:1px solid #2a3549; background:#0f141c; color:#e8eef7; outline:none; }
+    input:focus { border-color:#3b82f6; }
+    .provider { border:1px dashed #2a3549; border-radius:14px; padding:16px; }
+    .muted { color:#9fb0c9; font-size:13px; }
+    .row { display:flex; gap:12px; align-items:center; }
+    .btn { background:#3b82f6; color:white; border:none; padding:12px 16px; border-radius:12px; cursor:pointer; font-weight:600; }
+    .btn:active { transform: translateY(1px); }
+    .result { background:#0f141c; border:1px solid #22304a; border-radius:14px; padding:16px; }
+    .big { font-size:24px; font-weight:700; }
+    .good { color:#34d399; } .bad { color:#f87171; }
+    .pill { font-size:12px; padding:4px 8px; border-radius:999px; background:#22304a; color:#a9c1ff; }
+    footer { margin-top:24px; color:#7d8ba3; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
     <h1>RemitSaver</h1>
-    <p>Compare fees + FX markups for two providers. Demo version.</p>
-  </body>
+    <p class="sub">Compare fees + FX markups for two providers and see who gives your recipient more. <span class="pill">USD→USD now; multi‑currency coming soon</span></p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Send amount (USD)</label>
+          <input id="amount" type="number" value="300" min="1" step="1" />
+        </div>
+        <div>
+          <label>Official FX rate</label>
+          <input id="fxBase" type="number" value="1.0000" step="0.0001" />
+          <div class="muted">Keep 1.0000 for USD→USD. If converting, paste base rate here.</div>
+        </div>
+      </div>
+
+      <h3>Provider A</h3>
+      <div class="grid provider">
+        <div><label>Name</label><input id="aName" value="Provider A" /></div>
+        <div><label>Flat fee (USD)</label><input id="aFlat" type="number" value="3.99" step="0.01" /></div>
+        <div><label>Fee %</label><input id="aPct" type="number" value="1.5" step="0.1" /></div>
+        <div><label>FX markup % (on rate)</label><input id="aFx" type="number" value="1.2" step="0.1" /></div>
+      </div>
+
+      <h3>Provider B</h3>
+      <div class="grid provider">
+        <div><label>Name</label><input id="bName" value="Provider B" /></div>
+        <div><label>Flat fee (USD)</label><input id="bFlat" type="number" value="0.00" step="0.01" /></div>
+        <div><label>Fee %</label><input id="bPct" type="number" value="2.2" step="0.1" /></div>
+        <div><label>FX markup % (on rate)</label><input id="bFx" type="number" value="0.6" step="0.1" /></div>
+      </div>
+
+      <div style="margin-top:16px" class="row">
+        <button class="btn" onclick="calc()">Calculate</button>
+        <span class="muted">Tweak amounts + fees to match real offers and screenshot for your demo.</span>
+      </div>
+
+      <div id="out" style="margin-top:16px" class="grid">
+        <div class="result"><div class="muted">Results appear here after you calculate.</div></div>
+        <div class="result"><div class="muted">…including winner & savings.</div></div>
+      </div>
+
+      <footer><p><b>Disclaimer:</b> Demo only. Rates/fees change; verify with the provider.</p></footer>
+    </div>
+  </div>
+
+  <script>
+    function compute(amount, flat, pct, fxBase, fxMarkupPct){
+      const feePct = (pct/100) * amount;
+      const totalFees = Number(flat) + feePct;
+      const sendAfterFees = Math.max(0, amount - totalFees);
+      const effectiveRate = fxBase * (1 - (fxMarkupPct/100));
+      const received = sendAfterFees * effectiveRate;
+      const effCostPct = (totalFees / amount) * 100;
+      return { totalFees, sendAfterFees, effectiveRate, received, effCostPct };
+    }
+    function fmt(n, digits=2){ return Number(n).toLocaleString(undefined, {minimumFractionDigits:digits, maximumFractionDigits:digits}); }
+    function block(name, r){
+      return `
+        <div>
+          <div class="big">${name}</div>
+          <div class="muted">Effective cost: ${fmt(r.effCostPct)}%</div>
+          <div style="margin-top:8px">Total fees: <b>$${fmt(r.totalFees)}</b></div>
+          <div>After fees sent: <b>$${fmt(r.sendAfterFees)}</b></div>
+          <div>Effective FX: <b>${fmt(r.effectiveRate,4)}</b></div>
+          <div>Recipient receives: <b>$${fmt(r.received)}</b></div>
+        </div>
+      `;
+    }
+    function calc(){
+      const amount = parseFloat(document.getElementById('amount').value || 0);
+      const fxBase = parseFloat(document.getElementById('fxBase').value || 1);
+      const a = {
+        name: document.getElementById('aName').value,
+        flat: parseFloat(document.getElementById('aFlat').value || 0),
+        pct: parseFloat(document.getElementById('aPct').value || 0),
+        fx: parseFloat(document.getElementById('aFx').value || 0),
+      };
+      const b = {
+        name: document.getElementById('bName').value,
+        flat: parseFloat(document.getElementById('bFlat').value || 0),
+        pct: parseFloat(document.getElementById('bPct').value || 0),
+        fx: parseFloat(document.getElementById('bFx').value || 0),
+      };
+      const rA = compute(amount, a.flat, a.pct, fxBase, a.fx);
+      const rB = compute(amount, b.flat, b.pct, fxBase, b.fx);
+      const winner = rA.received > rB.received ? a.name : b.name;
+      const savings = Math.abs(rA.received - rB.received);
+      const left = block(a.name, rA);
+      const right = block(b.name, rB) + `<div style="margin-top:8px" class="${rA.received>rB.received?'bad':'good'}">
+        ${winner} wins. Difference: $${fmt(savings)}
+      </div>`;
+      document.getElementById('out').innerHTML = `
+        <div class="result">${left}</div>
+        <div class="result">${right}</div>
+      `;
+    }
+  </script>
+</body>
 </html>
