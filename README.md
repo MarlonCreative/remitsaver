@@ -66,4 +66,4 @@ Always verify providers, networks, and fees before sending real funds.
 
 ⸻
 
-👉 Would you like me to also create a short “How to Run Locally” section (with the backend agent instructions) so judges can clone and test it, or do you want to keep README short and demo-focused?# RemitSaver – Hackathon MVP
+Work in progress! Hi ya'll! I'll be updating this repo soon when I get some cycles in. This was a really fun learning experience. 
